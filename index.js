@@ -1,12 +1,15 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
 import urlRouter from './routes/url.route.js';
 import URL from './models/url.model.js';
 import connectDB from './connect.js';
+import staticRouter from './routes/static.route.js';
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 connectDB(process.env.MONGODB_URI).then(() => {
     console.log("Database connected successfully");
@@ -15,7 +18,15 @@ connectDB(process.env.MONGODB_URI).then(() => {
     process.exit(1);
 });
 
+app.set('view engine', 'ejs');
+app.set('views', path.resolve('./views'));
+app.get('/',async (req, res)=>{
+    const allurls =await URL.find({});
+   res.render('home', { id: req.query.id, urls: allurls });
+})
+
 app.use("/url", urlRouter);
+app.use("/", staticRouter);
 
 // Add error handling and check if entry exists
 app.get("/url/:shortId", async (req, res) => {
