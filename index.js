@@ -1,15 +1,19 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
-import urlRouter from './routes/url.route.js';
-import URL from './models/url.model.js';
+import cookieParser from 'cookie-parser';
 import connectDB from './connect.js';
+import URL from './models/url.model.js';
+import urlRouter from './routes/url.route.js';
 import staticRouter from './routes/static.route.js';
+import userRouter from './routes/user.route.js';
+import { restrictToLoggedInUserOnly, checkAuth } from './middleware/auth.middleware.js';
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 connectDB(process.env.MONGODB_URI).then(() => {
     console.log("Database connected successfully");
@@ -20,15 +24,16 @@ connectDB(process.env.MONGODB_URI).then(() => {
 
 app.set('view engine', 'ejs');
 app.set('views', path.resolve('./views'));
-app.get('/',async (req, res)=>{
-    const allurls =await URL.find({});
-   res.render('home', { id: req.query.id, urls: allurls });
-})
+// app.get('/', async (req, res) => {
+//     const allurls = await URL.find({});
+//     res.render('home', { id: req.query.id, urls: allurls });
+// })
 
-app.use("/url", urlRouter);
-app.use("/", staticRouter);
+app.use("/url", restrictToLoggedInUserOnly, urlRouter);
+app.use('/user', userRouter);
+app.use("/", checkAuth, staticRouter);
 
-// Add error handling and check if entry exists
+
 app.get("/url/:shortId", async (req, res) => {
     try {
         const shortId = req.params.shortId;
